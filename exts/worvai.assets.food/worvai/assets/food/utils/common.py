@@ -52,14 +52,14 @@ def compute_bucket_spawn_bounds(
     return min_xyz, max_xyz
 
 
-def _make_orientation_quat(rotation_xyz_deg: np.ndarray) -> Gf.Quatf:
+def make_orientation_quat(rotation_xyz_deg: np.ndarray) -> Gf.Quatf:
     rot = Gf.Rotation(Gf.Vec3d(1, 0, 0), float(rotation_xyz_deg[0]))
     rot = rot * Gf.Rotation(Gf.Vec3d(0, 1, 0), float(rotation_xyz_deg[1]))
     rot = rot * Gf.Rotation(Gf.Vec3d(0, 0, 1), float(rotation_xyz_deg[2]))
     return Gf.Quatf(rot.GetQuat())
 
 
-def _sample_rotations(
+def sample_rotations(
     randomize_rotation: bool,
     piece_count: int,
     backend: "SpawnBackend",
@@ -69,7 +69,7 @@ def _sample_rotations(
         return [Gf.Quatf(1.0, 0.0, 0.0, 0.0) for _ in range(piece_count)]
     seed_val = 0 if seed is None else int(seed) + 1337
     rotations = backend.sample_euler_degrees(piece_count, seed_val)
-    return [_make_orientation_quat(rot) for rot in rotations]
+    return [make_orientation_quat(rot) for rot in rotations]
 
 
 def spawn_pieces_instancer(
@@ -111,7 +111,7 @@ def spawn_pieces_instancer(
     instancer.CreatePositionsAttr().Set([Gf.Vec3f(*pos) for pos in positions])
     instancer.CreateProtoIndicesAttr().Set(proto_indices)
 
-    orientations = _sample_rotations(randomize_rotation, piece_count, backend_obj, seed)
+    orientations = sample_rotations(randomize_rotation, piece_count, backend_obj, seed)
     instancer.CreateOrientationsAttr().Set(orientations)
 
     if piece_scale:
@@ -120,12 +120,12 @@ def spawn_pieces_instancer(
     return instancer_path
 
 
-def _quat_to_numpy(quat: Union[Gf.Quatf, Gf.Quatd]) -> np.ndarray:
+def quat_to_numpy(quat: Union[Gf.Quatf, Gf.Quatd]) -> np.ndarray:
     imag = quat.GetImaginary()
     return np.array([quat.GetReal(), imag[0], imag[1], imag[2]], dtype=np.float64)
 
 
-def _quat_multiply(q1: np.ndarray, q2: np.ndarray) -> np.ndarray:
+def quat_multiply(q1: np.ndarray, q2: np.ndarray) -> np.ndarray:
     w1, x1, y1, z1 = q1
     w2, x2, y2, z2 = q2
     return np.array(
@@ -159,7 +159,7 @@ def get_instancer_poses(instancer_path: str) -> Tuple[np.ndarray, np.ndarray]:
     world_matrix = xformable.ComputeLocalToWorldTransform(Usd.TimeCode.Default())
     world_matrix_np = np.array(world_matrix)
     instancer_rotation = world_matrix.ExtractRotation().GetQuat()
-    instancer_quat = _quat_to_numpy(instancer_rotation)
+    instancer_quat = quat_to_numpy(instancer_rotation)
 
     pos_np = np.array([[p[0], p[1], p[2]] for p in positions], dtype=np.float64)
     if len(pos_np) == 0:
@@ -170,8 +170,8 @@ def get_instancer_poses(instancer_path: str) -> Tuple[np.ndarray, np.ndarray]:
 
     ori_np = np.zeros((len(orientations), 4), dtype=np.float64)
     for idx, quat in enumerate(orientations):
-        local_quat = _quat_to_numpy(quat)
-        ori_np[idx] = _quat_multiply(instancer_quat, local_quat)
+        local_quat = quat_to_numpy(quat)
+        ori_np[idx] = quat_multiply(instancer_quat, local_quat)
 
     return world_pos, ori_np
 

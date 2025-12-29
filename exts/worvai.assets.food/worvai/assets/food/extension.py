@@ -60,7 +60,9 @@ class Extension(omni.ext.IExt):
         self._manager = None
         return bucket
 
-    async def spawn_food_async(self, food_name: str = "popcorn", **kwargs) -> FoodBucket:
+    async def spawn_food_async(
+        self, food_name: str = "popcorn", **kwargs
+    ) -> FoodBucket:
         asset = get_food_asset(food_name)
         bucket = await asset.spawn_async(**kwargs)
         self._bucket = bucket
@@ -79,7 +81,9 @@ class Extension(omni.ext.IExt):
         bucket = self.spawn_food(food_name, **kwargs)
         return self.create_manager(bucket)
 
-    async def spawn_and_track_async(self, food_name: str = "popcorn", **kwargs) -> ContainerManager:
+    async def spawn_and_track_async(
+        self, food_name: str = "popcorn", **kwargs
+    ) -> ContainerManager:
         bucket = await self.spawn_food_async(food_name, **kwargs)
         return self.create_manager(bucket)
 
@@ -107,7 +111,7 @@ class Extension(omni.ext.IExt):
                 onclick_action=(_EXTENSION_NAME, "toggle_food_window"),
             )
         ]
-        menu_utils.add_menu_items(self._menu_items, _MENU_ROOT, menu_index=-100)
+        menu_utils.add_menu_items(self._menu_items, _MENU_ROOT, menu_index=-1)
         menu_utils.refresh_menu_items(_MENU_ROOT)
 
     def _remove_menu(self) -> None:
@@ -131,10 +135,16 @@ class Extension(omni.ext.IExt):
         assets = list_food_assets()
         default_food = assets[0] if assets else "popcorn"
         self._food_name_model = ui.SimpleStringModel(default_food)
-        self._assets_model = ui.SimpleStringModel(", ".join(assets) if assets else "None")
+        self._assets_model = ui.SimpleStringModel(
+            ", ".join(assets) if assets else "None"
+        )
         self._backend_model = ui.SimpleStringModel("numpy")
-        self._bucket_path_model = ui.SimpleStringModel(self._default_bucket_path(default_food))
-        self._instancer_path_model = ui.SimpleStringModel(self._default_instancer_path(default_food))
+        self._bucket_path_model = ui.SimpleStringModel(
+            self._default_bucket_path(default_food)
+        )
+        self._instancer_path_model = ui.SimpleStringModel(
+            self._default_instancer_path(default_food)
+        )
         self._piece_count_model = ui.SimpleIntModel(50)
         self._spawn_margin_model = ui.SimpleFloatModel(0.02)
         self._fill_ratio_model = ui.SimpleFloatModel(0.6)
@@ -186,19 +196,27 @@ class Extension(omni.ext.IExt):
                     ui.Button("Spawn", clicked_fn=self._on_spawn_clicked)
                     ui.Button("Spawn + Track", clicked_fn=self._on_spawn_track_clicked)
                 with ui.HStack():
-                    ui.Button("Create Manager", clicked_fn=self._on_create_manager_clicked)
-                    ui.Button("Refresh Assets", clicked_fn=self._on_refresh_assets_clicked)
+                    ui.Button(
+                        "Create Manager", clicked_fn=self._on_create_manager_clicked
+                    )
+                    ui.Button(
+                        "Refresh Assets", clicked_fn=self._on_refresh_assets_clicked
+                    )
                 with ui.HStack():
                     ui.Label("Status", width=140)
                     ui.StringField(self._status_model, read_only=True)
 
     def _default_bucket_path(self, food_name: str) -> str:
-        token = "".join(part.capitalize() for part in food_name.replace("_", " ").split())
+        token = "".join(
+            part.capitalize() for part in food_name.replace("_", " ").split()
+        )
         token = token or "Food"
         return f"/World/{token}Bucket"
 
     def _default_instancer_path(self, food_name: str) -> str:
-        token = "".join(part.capitalize() for part in food_name.replace("_", " ").split())
+        token = "".join(
+            part.capitalize() for part in food_name.replace("_", " ").split()
+        )
         token = token or "Food"
         return f"/World/{token}Pieces"
 
@@ -223,7 +241,9 @@ class Extension(omni.ext.IExt):
             "fill_ratio": float(self._fill_ratio_model.get_value_as_float()),
             "seed": seed,
             "update_steps": int(self._update_steps_model.get_value_as_int()),
-            "randomize_rotation": bool(self._randomize_rotation_model.get_value_as_bool()),
+            "randomize_rotation": bool(
+                self._randomize_rotation_model.get_value_as_bool()
+            ),
             "backend": backend,
         }
         return food_name, settings

@@ -62,22 +62,6 @@ class ContainerManager:
             raise IndexError("piece_index out of range.")
         return positions[piece_index], orientations[piece_index]
 
-    def _get_container_bounds(self) -> np.ndarray:
-        container_path = self._container.get_container_prim_path()
-        if not prims_utils.is_prim_path_valid(container_path):
-            raise RuntimeError(f"Container prim not found: {container_path}")
-        bbox_cache = bounds_utils.create_bbox_cache()
-        return bounds_utils.compute_aabb(
-            bbox_cache,
-            prim_path=container_path,
-            include_children=self._include_container_children,
-        )
-
-    def _is_in_container(self, positions: np.ndarray, bounds: np.ndarray) -> np.ndarray:
-        min_xyz = bounds[:3] - self._in_container_margin
-        max_xyz = bounds[3:] + self._in_container_margin
-        return np.all((positions >= min_xyz) & (positions <= max_xyz), axis=1)
-
     def get_piece_states(self) -> List[dict]:
         bounds = self._get_container_bounds()
         states: List[dict] = []
@@ -125,6 +109,22 @@ class ContainerManager:
 
     def get_bucket_state(self) -> dict:
         return self.get_container_state()
+
+    def _get_container_bounds(self) -> np.ndarray:
+        container_path = self._container.get_container_prim_path()
+        if not prims_utils.is_prim_path_valid(container_path):
+            raise RuntimeError(f"Container prim not found: {container_path}")
+        bbox_cache = bounds_utils.create_bbox_cache()
+        return bounds_utils.compute_aabb(
+            bbox_cache,
+            prim_path=container_path,
+            include_children=self._include_container_children,
+        )
+
+    def _is_in_container(self, positions: np.ndarray, bounds: np.ndarray) -> np.ndarray:
+        min_xyz = bounds[:3] - self._in_container_margin
+        max_xyz = bounds[3:] + self._in_container_margin
+        return np.all((positions >= min_xyz) & (positions <= max_xyz), axis=1)
 
 
 class FoodBucketManager(ContainerManager):

@@ -21,10 +21,6 @@ class BaseItemDefinition(ABC):
     scale: Tuple[float, float, float] = DEFAULT_SCALE
     mass_kg: Optional[float] = None
 
-    @property
-    @abstractmethod
-    def kind(self) -> str: ...
-
     def __post_init__(self) -> None:
         if not self.name or not self.name.strip():
             raise ValueError("name must be a non-empty string")
@@ -36,6 +32,10 @@ class BaseItemDefinition(ABC):
             raise ValueError("scale values must be > 0")
         if self.mass_kg is not None and self.mass_kg <= 0:
             raise ValueError("mass_kg must be > 0 when provided")
+
+    @property
+    @abstractmethod
+    def kind(self) -> str: ...
 
 
 @dataclass(frozen=True)
