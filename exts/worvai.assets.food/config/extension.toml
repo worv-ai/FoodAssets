@@ -4,12 +4,13 @@ category = "Assets"
 title = "Food Assets"
 description = "Spawn food assets with instanced pieces and tracking support."
 authors = ["WoRVAI"]
-icon = "data/icon.png"
+icon = "data/icon.svg"
 repository = ""
 keywords = ["food", "assets", "tracking"]
 
 [dependencies]
 "isaacsim.core.utils" = {}
+"isaacsim.gui.components" = {}
 "omni.kit.menu.utils" = {}
 "omni.kit.uiapp" = {}
 "omni.usd" = {}
