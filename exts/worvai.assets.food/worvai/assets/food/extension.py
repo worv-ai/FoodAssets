@@ -10,6 +10,7 @@ import omni.ext
 import omni.kit.actions.core
 import omni.kit.menu.utils as menu_utils
 import omni.ui as ui
+from isaacsim.gui.components.widgets import DynamicComboBoxModel
 from omni.kit.menu.utils import MenuItemDescription
 
 from .core import ContainerManager, get_food_asset, list_food_assets
@@ -135,10 +136,10 @@ class Extension(omni.ext.IExt):
         assets = list_food_assets()
         default_food = assets[0] if assets else "popcorn"
         self._food_name_model = ui.SimpleStringModel(default_food)
-        self._assets_model = ui.SimpleStringModel(
-            ", ".join(assets) if assets else "None"
-        )
-        self._backend_model = ui.SimpleStringModel("numpy")
+        self._available_items = assets or ["None"]
+        self._available_model = DynamicComboBoxModel(self._available_items)
+        self._backend_items = ["numpy", "warp"]
+        self._backend_model = DynamicComboBoxModel(self._backend_items)
         self._bucket_path_model = ui.SimpleStringModel(
             self._default_bucket_path(default_food)
         )
@@ -159,13 +160,16 @@ class Extension(omni.ext.IExt):
                 ui.Label("Food Assets")
                 with ui.HStack():
                     ui.Label("Available", width=140)
-                    ui.StringField(self._assets_model, read_only=True)
+                    self._available_combo = ui.ComboBox(self._available_model)
+                self._available_combo.model.add_item_changed_fn(
+                    self._on_available_selection
+                )
                 with ui.HStack():
                     ui.Label("Food name", width=140)
                     ui.StringField(self._food_name_model)
                 with ui.HStack():
                     ui.Label("Backend", width=140)
-                    ui.StringField(self._backend_model)
+                    self._backend_combo = ui.ComboBox(self._backend_model)
                 with ui.HStack():
                     ui.Label("Bucket prim", width=140)
                     ui.StringField(self._bucket_path_model)
@@ -204,7 +208,8 @@ class Extension(omni.ext.IExt):
                     )
                 with ui.HStack():
                     ui.Label("Status", width=140)
-                    ui.StringField(self._status_model, read_only=True)
+                    ui.StringField(self._status_model, read_only=True, width=ui.Fraction(1))
+        self._sync_available_selection()
 
     def _default_bucket_path(self, food_name: str) -> str:
         token = "".join(
@@ -220,9 +225,46 @@ class Extension(omni.ext.IExt):
         token = token or "Food"
         return f"/World/{token}Pieces"
 
+    def _get_selected_available_name(self) -> Optional[str]:
+        index = self._available_model.get_item_value_model().as_int
+        if 0 <= index < len(self._available_items):
+            name = self._available_items[index]
+            if name != "None":
+                return name
+        return None
+
+    def _get_selected_backend(self) -> Optional[str]:
+        index = self._backend_model.get_item_value_model().as_int
+        if 0 <= index < len(self._backend_items):
+            return self._backend_items[index]
+        return None
+
+    def _apply_food_name(self, food_name: str) -> None:
+        food_name = food_name.strip()
+        if not food_name:
+            return
+        current_name = self._food_name_model.get_value_as_string().strip() or food_name
+        current_bucket = self._bucket_path_model.get_value_as_string().strip()
+        current_instancer = self._instancer_path_model.get_value_as_string().strip()
+        self._food_name_model.set_value(food_name)
+        if not current_bucket or current_bucket == self._default_bucket_path(current_name):
+            self._bucket_path_model.set_value(self._default_bucket_path(food_name))
+        if not current_instancer or current_instancer == self._default_instancer_path(current_name):
+            self._instancer_path_model.set_value(self._default_instancer_path(food_name))
+
+    def _sync_available_selection(self) -> None:
+        if not self._available_items or self._available_combo is None:
+            return
+        food_name = self._food_name_model.get_value_as_string().strip()
+        try:
+            index = self._available_items.index(food_name)
+        except ValueError:
+            index = 0
+        self._available_combo.model.set_item_value_model(ui.SimpleIntModel(index))
+
     def _collect_spawn_settings(self) -> Tuple[str, dict]:
         food_name = self._food_name_model.get_value_as_string().strip() or "popcorn"
-        backend = self._backend_model.get_value_as_string().strip() or None
+        backend = self._get_selected_backend()
         bucket_prim_path = self._bucket_path_model.get_value_as_string().strip()
         instancer_path = self._instancer_path_model.get_value_as_string().strip()
         if not bucket_prim_path:
@@ -251,6 +293,11 @@ class Extension(omni.ext.IExt):
     def _set_status(self, message: str) -> None:
         self._status_model.set_value(message)
 
+    def _on_available_selection(self, _model=None, _item=None) -> None:
+        selected = self._get_selected_available_name()
+        if selected:
+            self._apply_food_name(selected)
+
     def _on_spawn_clicked(self) -> None:
         asyncio.ensure_future(self._spawn_from_ui(track=False))
 
@@ -268,7 +315,11 @@ class Extension(omni.ext.IExt):
 
     def _on_refresh_assets_clicked(self) -> None:
         assets = list_food_assets()
-        self._assets_model.set_value(", ".join(assets) if assets else "None")
+        self._available_items = assets or ["None"]
+        self._available_model = DynamicComboBoxModel(self._available_items)
+        self._available_combo.model = self._available_model
+        self._available_combo.model.add_item_changed_fn(self._on_available_selection)
+        self._sync_available_selection()
         self._set_status("Assets refreshed.")
 
     async def _spawn_from_ui(self, track: bool) -> None:

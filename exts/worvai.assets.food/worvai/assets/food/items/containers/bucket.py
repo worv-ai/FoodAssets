@@ -11,7 +11,7 @@ from isaacsim.core.utils import stage as stage_utils
 from ...core.base import TrackableContainer
 from ...utils import (
     SpawnBackend,
-    compute_bucket_spawn_bounds,
+    compute_prim_bounds,
     spawn_pieces_instancer,
     update_app,
     update_app_async,
@@ -70,7 +70,7 @@ class FoodBucket(TrackableContainer):
         spawn_bucket(bucket_prim_path, container_usd_path)
         update_app(update_steps)
 
-        spawn_bounds = compute_bucket_spawn_bounds(
+        spawn_bounds = compute_prim_bounds(
             bucket_prim_path, spawn_margin=spawn_margin, fill_ratio=fill_ratio
         )
         spawn_pieces_instancer(
@@ -112,7 +112,7 @@ class FoodBucket(TrackableContainer):
         spawn_bucket(bucket_prim_path, container_usd_path)
         await update_app_async(update_steps)
 
-        spawn_bounds = compute_bucket_spawn_bounds(
+        spawn_bounds = compute_prim_bounds(
             bucket_prim_path, spawn_margin=spawn_margin, fill_ratio=fill_ratio
         )
         spawn_pieces_instancer(
