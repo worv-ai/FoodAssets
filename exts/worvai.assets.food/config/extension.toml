@@ -3,7 +3,8 @@ version = "0.1.0"
 category = "Assets"
 title = "Food Assets"
 description = "Spawn food assets with instanced pieces and tracking support."
-authors = ["Worvai"]
+authors = ["WoRVAI"]
+icon = "data/icon.png"
 repository = ""
 keywords = ["food", "assets", "tracking"]
 
