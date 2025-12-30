@@ -5,7 +5,7 @@ title = "Food Assets"
 description = "Spawn food assets with instanced pieces and tracking support."
 authors = ["WoRVAI"]
 icon = "data/icon.svg"
-repository = ""
+repository = "https://github.com/worv-ai/FoodAssets"
 keywords = ["food", "assets", "tracking"]
 
 [dependencies]
