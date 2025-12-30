@@ -52,26 +52,21 @@ def main() -> None:
         light.CreateAngleAttr(0.53)
         light.AddRotateXYZOp().Set(Gf.Vec3f(-45.0, 0.0, 0.0))
 
+    spawn_kwargs = {
+        "bucket_prim_path": "/World/PopcornBucket",
+        "instancer_path": "/World/PopcornPieces",
+        "piece_count": args.piece_count,
+        "spawn_margin": 0.02,
+        "fill_ratio": 0.6,
+        "backend": args.backend,
+    }
     try:
-        bucket = spawn_popcorn_bucket(
-            bucket_prim_path="/World/PopcornBucket",
-            instancer_path="/World/PopcornPieces",
-            piece_count=args.piece_count,
-            spawn_margin=0.02,
-            fill_ratio=0.6,
-            backend=args.backend,
-        )
+        bucket = spawn_popcorn_bucket(**spawn_kwargs)
     except Exception as exc:
         if args.backend == "warp":
             print(f"Failed to spawn with warp backend: {exc}. Falling back to numpy.")
-            bucket = spawn_popcorn_bucket(
-                bucket_prim_path="/World/PopcornBucket",
-                instancer_path="/World/PopcornPieces",
-                piece_count=args.piece_count,
-                spawn_margin=0.02,
-                fill_ratio=0.6,
-                backend="numpy",
-            )
+            spawn_kwargs["backend"] = "numpy"
+            bucket = spawn_popcorn_bucket(**spawn_kwargs)
         else:
             raise
 
