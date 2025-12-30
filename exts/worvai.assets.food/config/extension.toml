@@ -1,0 +1,19 @@
+[package]
+version = "0.0.1"
+category = "Assets"
+title = "Food Assets"
+description = "Spawn food assets with instanced pieces and tracking support."
+authors = ["WoRVAI"]
+icon = "data/icon.svg"
+repository = "https://github.com/worv-ai/FoodAssets"
+keywords = ["food", "assets", "tracking"]
+
+[dependencies]
+"isaacsim.core.utils" = {}
+"isaacsim.gui.components" = {}
+"omni.kit.menu.utils" = {}
+"omni.kit.uiapp" = {}
+"omni.usd" = {}
+
+[[python.module]]
+name = "worvai.assets.food"
