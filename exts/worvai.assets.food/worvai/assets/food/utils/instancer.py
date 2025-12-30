@@ -55,17 +55,20 @@ def spawn_pieces_instancer(
 
     min_xyz, max_xyz = spawn_bounds
     backend_obj = get_spawn_backend(backend)
-    positions = backend_obj.sample_positions(min_xyz, max_xyz, piece_count, seed)
+    positions = np.asarray(backend_obj.sample_positions(min_xyz, max_xyz, piece_count, seed), dtype=np.float64)
     proto_indices = [0] * piece_count
 
-    instancer.CreatePositionsAttr().Set([Gf.Vec3f(*pos) for pos in positions])
+    instancer.CreatePositionsAttr().Set(
+        [Gf.Vec3f(float(pos[0]), float(pos[1]), float(pos[2])) for pos in positions]
+    )
     instancer.CreateProtoIndicesAttr().Set(proto_indices)
 
     orientations = sample_rotations(randomize_rotation, piece_count, backend_obj, seed)
     instancer.CreateOrientationsAttr().Set(orientations)
 
     if piece_scale:
-        instancer.CreateScalesAttr().Set([Gf.Vec3f(*piece_scale) for _ in range(piece_count)])
+        scale_vec = Gf.Vec3f(float(piece_scale[0]), float(piece_scale[1]), float(piece_scale[2]))
+        instancer.CreateScalesAttr().Set([scale_vec for _ in range(piece_count)])
 
     return instancer_path
 
