@@ -4,7 +4,7 @@ Isaac Sim extension that provides food assets (USD) and helpers for spawning ite
 
 ## Quick Start
 - Enable the extension in Isaac Sim.
-- Use the provided assets: `popcorn-bucket.usdc`, `popcorn-piece.usdc`, `taco.usdc`.
+- Use the provided assets: `popcorn-bucket.usdc`, `popcorn-piece.usdc`.
 - Spawn pieces with the point instancer helpers in `worvai.assets.food.utils`.
 
 ## Notes
