@@ -63,7 +63,7 @@ POPCORN_CONTAINER = ContainerDefinition(
 
 POPCORN_EDIBLE = EdibleDefinition(
     name="popcorn",
-    usd="popcorn.usdc",
+    usd="popcorn-piece.usdc",
 )
 
 TACO_EDIBLE = EdibleDefinition(
