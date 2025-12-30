@@ -13,6 +13,7 @@ from .base import TrackableContainer
 from ..utils import get_instancer_poses
 
 
+# FIXME: Separate the methods for plate or bucket management
 class ContainerManager:
     """Tracks container pose and item piece states."""
 
@@ -35,10 +36,6 @@ class ContainerManager:
         return self._container.get_container_prim_path()
 
     @property
-    def bucket_prim_path(self) -> str:
-        return self.container_prim_path
-
-    @property
     def instancer_path(self) -> str:
         return self._container.get_instancer_path()
 
@@ -48,9 +45,6 @@ class ContainerManager:
 
     def get_container_pose(self) -> Tuple[np.ndarray, np.ndarray]:
         return xforms_utils.get_world_pose(self._container.get_container_prim_path())
-
-    def get_bucket_pose(self) -> Tuple[np.ndarray, np.ndarray]:
-        return self.get_container_pose()
 
     def get_piece_pose(self, piece_index: int) -> Tuple[np.ndarray, np.ndarray]:
         if not isinstance(piece_index, int):
@@ -80,7 +74,6 @@ class ContainerManager:
                     "position": positions[idx],
                     "orientation": orientations[idx],
                     "in_container": in_container,
-                    "in_bucket": in_container,
                 }
             )
         return states
@@ -92,9 +85,6 @@ class ContainerManager:
             return 0
         return int(self._is_in_container(positions, bounds).sum())
 
-    def count_pieces_in_bucket(self) -> int:
-        return self.count_pieces_in_container()
-
     def get_container_state(self) -> dict:
         position, orientation = self.get_container_pose()
         pieces_in_container = self.count_pieces_in_container()
@@ -104,11 +94,7 @@ class ContainerManager:
             "orientation": orientation,
             "pieces_total": self._container.get_piece_count(),
             "pieces_in_container": pieces_in_container,
-            "pieces_in_bucket": pieces_in_container,
         }
-
-    def get_bucket_state(self) -> dict:
-        return self.get_container_state()
 
     def _get_container_bounds(self) -> np.ndarray:
         container_path = self._container.get_container_prim_path()
@@ -128,6 +114,28 @@ class ContainerManager:
 
 
 class FoodBucketManager(ContainerManager):
-    """Bucket-focused manager for compatibility."""
+    """Bucket-focused manager with bucket-specific aliases."""
 
-    pass
+    @property
+    def bucket_prim_path(self) -> str:
+        return self.container_prim_path
+
+    def get_bucket_pose(self) -> Tuple[np.ndarray, np.ndarray]:
+        return self.get_container_pose()
+
+    def get_piece_states(self) -> List[dict]:
+        states = super().get_piece_states()
+        for state in states:
+            state["in_bucket"] = state["in_container"]
+        return states
+
+    def count_pieces_in_bucket(self) -> int:
+        return self.count_pieces_in_container()
+
+    def get_container_state(self) -> dict:
+        state = super().get_container_state()
+        state["pieces_in_bucket"] = state["pieces_in_container"]
+        return state
+
+    def get_bucket_state(self) -> dict:
+        return self.get_container_state()

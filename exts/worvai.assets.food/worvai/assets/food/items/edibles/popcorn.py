@@ -8,7 +8,7 @@ from typing import Optional, Sequence, Union
 import omni.kit.app
 
 from ...core.base import FoodAsset, FoodAssetPaths, register_food_asset
-from ...core.manager import ContainerManager
+from ...core.manager import FoodBucketManager
 from ...utils import SpawnBackend
 from ..containers.bucket import FoodBucket
 from ..definitions import POPCORN_CONTAINER, POPCORN_EDIBLE
@@ -20,7 +20,7 @@ class PopcornBucket(FoodBucket):
     pass
 
 
-class PopcornBucketManager(ContainerManager):
+class PopcornBucketManager(FoodBucketManager):
     """Popcorn-specific manager for future specialization."""
 
     pass
