@@ -212,16 +212,12 @@ class Extension(omni.ext.IExt):
         self._sync_available_selection()
 
     def _default_bucket_path(self, food_name: str) -> str:
-        token = "".join(
-            part.capitalize() for part in food_name.replace("_", " ").split()
-        )
+        token = food_name.replace("_", " ").title().replace(" ", "")
         token = token or "Food"
         return f"/World/{token}Bucket"
 
     def _default_instancer_path(self, food_name: str) -> str:
-        token = "".join(
-            part.capitalize() for part in food_name.replace("_", " ").split()
-        )
+        token = food_name.replace("_", " ").title().replace(" ", "")
         token = token or "Food"
         return f"/World/{token}Pieces"
 
