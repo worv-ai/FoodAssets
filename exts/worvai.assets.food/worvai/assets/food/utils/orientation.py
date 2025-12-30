@@ -41,7 +41,7 @@ def sample_rotations(
 
 def quat_to_numpy(quat: Union[Gf.Quath, Gf.Quatf, Gf.Quatd]) -> np.ndarray:
     imag = quat.GetImaginary()
-    return np.array([quat.GetReal(), imag[0], imag[1], imag[2]], dtype=np.float64)
+    return np.array([quat.GetReal(), imag[0], imag[1], imag[2]], dtype=np.float32)
 
 
 def quat_multiply(q1: np.ndarray, q2: np.ndarray) -> np.ndarray:
@@ -54,5 +54,5 @@ def quat_multiply(q1: np.ndarray, q2: np.ndarray) -> np.ndarray:
             w1 * y2 - x1 * z2 + y1 * w2 + z1 * x2,
             w1 * z2 + x1 * y2 - y1 * x2 + z1 * w2,
         ],
-        dtype=np.float64,
+        dtype=np.float32,
     )

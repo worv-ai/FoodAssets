@@ -55,7 +55,10 @@ def spawn_pieces_instancer(
 
     min_xyz, max_xyz = spawn_bounds
     backend_obj = get_spawn_backend(backend)
-    positions = np.asarray(backend_obj.sample_positions(min_xyz, max_xyz, piece_count, seed), dtype=np.float64)
+    positions = np.asarray(
+        backend_obj.sample_positions(min_xyz, max_xyz, piece_count, seed),
+        dtype=np.float32,
+    )
     proto_indices = [0] * piece_count
 
     instancer.CreatePositionsAttr().Set(
@@ -92,18 +95,20 @@ def get_instancer_poses(instancer_path: str) -> Tuple[np.ndarray, np.ndarray]:
 
     xformable = UsdGeom.Xformable(prim)
     world_matrix = xformable.ComputeLocalToWorldTransform(Usd.TimeCode.Default())
-    world_matrix_np = np.array(world_matrix)
+    world_matrix_np = np.array(world_matrix, dtype=np.float32)
     instancer_rotation = world_matrix.ExtractRotation().GetQuat()
     instancer_quat = quat_to_numpy(instancer_rotation)
 
-    pos_np = np.array([[p[0], p[1], p[2]] for p in positions], dtype=np.float64)
+    pos_np = np.array([[p[0], p[1], p[2]] for p in positions], dtype=np.float32)
     if len(pos_np) == 0:
-        return pos_np, np.zeros((0, 4), dtype=np.float64)
+        return pos_np, np.zeros((0, 4), dtype=np.float32)
 
-    pos_h = np.concatenate([pos_np, np.ones((pos_np.shape[0], 1), dtype=np.float64)], axis=1)
+    pos_h = np.concatenate(
+        [pos_np, np.ones((pos_np.shape[0], 1), dtype=np.float32)], axis=1
+    )
     world_pos = (pos_h @ world_matrix_np.T)[:, :3]
 
-    ori_np = np.zeros((len(orientations), 4), dtype=np.float64)
+    ori_np = np.zeros((len(orientations), 4), dtype=np.float32)
     for idx, quat in enumerate(orientations):
         local_quat = quat_to_numpy(quat)
         ori_np[idx] = quat_multiply(instancer_quat, local_quat)
