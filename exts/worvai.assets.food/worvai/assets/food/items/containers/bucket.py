@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from pathlib import Path
 from typing import Optional, Sequence, Union
 
 from isaacsim.core.utils import stage as stage_utils
@@ -16,11 +15,11 @@ from ...utils import (
     update_app,
     update_app_async,
 )
+from ...utils.paths import ensure_asset_exists
 
 
 def spawn_bucket(bucket_prim_path: str, usd_path: str) -> None:
-    if not Path(usd_path).is_file():
-        raise FileNotFoundError(f"Missing asset at {usd_path}")
+    ensure_asset_exists(usd_path)
     stage = stage_utils.get_current_stage()
     if stage is None:
         raise RuntimeError("No USD stage is open.")
