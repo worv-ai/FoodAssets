@@ -9,4 +9,5 @@ Isaac Sim extension that provides food assets (USD) and helpers for spawning ite
 
 ## Notes
 - Asset paths are relative to the extension root.
+- Asset paths may also be `omniverse://` URLs; `file://` URIs work for local assets when staging Nucleus scenes.
 - For large changes, verify bounds and transforms in a test scene.

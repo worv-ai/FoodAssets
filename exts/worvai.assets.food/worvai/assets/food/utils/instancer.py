@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-from pathlib import Path
 from typing import Optional, Sequence, Tuple, Union
 
 import numpy as np
@@ -11,6 +10,7 @@ from pxr import Gf, Usd, UsdGeom
 
 from .backend import SpawnBackend, get_spawn_backend
 from .orientation import quat_multiply, quat_to_numpy, sample_rotations
+from .paths import ensure_asset_exists
 
 
 def spawn_pieces_instancer(
@@ -24,8 +24,7 @@ def spawn_pieces_instancer(
     backend: Union[str, SpawnBackend, None] = None,
     prototype_path: Optional[str] = None,
 ) -> str:
-    if not Path(usd_path).is_file():
-        raise FileNotFoundError(f"Missing asset at {usd_path}")
+    ensure_asset_exists(usd_path)
     stage = stage_utils.get_current_stage()
     if stage is None:
         raise RuntimeError("No USD stage is open.")
