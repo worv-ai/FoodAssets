@@ -1,19 +1,23 @@
-"""Spawn a popcorn bucket with instanced pieces and track them while moving the bucket."""
+"""Spawn a popcorn bucket and track pieces while moving the bucket."""
 
 from __future__ import annotations
 
 import argparse
+import logging
 
 import numpy as np
 
 from isaacsim import SimulationApp
 
+_logger = logging.getLogger(__name__)
+
 
 def _parse_args() -> argparse.Namespace:
-    parser = argparse.ArgumentParser(description="Spawn popcorn bucket and track instanced pieces.")
+    """Parse command-line arguments for the demo script."""
+    parser = argparse.ArgumentParser(description="Spawn popcorn bucket and track pieces.")
     parser.add_argument("--headless", action="store_true", help="Run Isaac Sim in headless mode.")
     parser.add_argument("--backend", choices=["warp", "numpy"], default="warp", help="Spawn backend.")
-    parser.add_argument("--piece-count", type=int, default=200, help="Number of popcorn pieces.")
+    parser.add_argument("--piece-count", type=int, default=100, help="Number of popcorn pieces.")
     parser.add_argument("--force", type=float, default=500.0, help="Lateral force applied to the bucket.")
     parser.add_argument("--steps", type=int, default=240, help="Total simulation steps.")
     parser.add_argument("--force-step", type=int, default=30, help="Step index to apply force.")
@@ -24,10 +28,14 @@ def _parse_args() -> argparse.Namespace:
         default=0.05,
         help="Minimum displacement before applying manual fallback offset.",
     )
+    parser.add_argument("--no-physics", action="store_true", help="Disable physics (use point instancer only).")
+    parser.add_argument("--piece-mass", type=float, default=0.001, help="Mass of each popcorn piece in kg.")
     return parser.parse_args()
 
 
 def main() -> None:
+    """Run the popcorn bucket demo."""
+    logging.basicConfig(level=logging.INFO, format="%(levelname)s:%(name)s:%(message)s")
     args = _parse_args()
 
     simulation_app = SimulationApp({"headless": args.headless})
@@ -59,12 +67,18 @@ def main() -> None:
         "spawn_margin": 0.02,
         "fill_ratio": 0.6,
         "backend": args.backend,
+        "enable_physics": not args.no_physics,
+        "piece_mass": args.piece_mass,
+        "apply_bucket_physics": not args.no_physics,
     }
     try:
         bucket = spawn_popcorn_bucket(**spawn_kwargs)
     except Exception as exc:
         if args.backend == "warp":
-            print(f"Failed to spawn with warp backend: {exc}. Falling back to numpy.")
+            _logger.warning(
+                "Failed to spawn with warp backend: %s. Falling back to numpy.",
+                exc,
+            )
             spawn_kwargs["backend"] = "numpy"
             bucket = spawn_popcorn_bucket(**spawn_kwargs)
         else:
@@ -74,19 +88,25 @@ def main() -> None:
 
     world.reset()
 
-    try:
-        geometry = GeometryPrim(bucket.bucket_prim_path)
-        geometry.apply_collision_apis()
-        geometry.set_collision_approximations(["convexHull"])
-    except Exception as exc:
-        print(f"Warning: could not apply collision to bucket: {exc}")
+    # Only apply collision manually if physics wasn't enabled during spawn
+    if args.no_physics:
+        try:
+            geometry = GeometryPrim(bucket.bucket_prim_path)
+            geometry.apply_collision_apis()
+            geometry.set_collision_approximations(["convexHull"])
+        except Exception as exc:
+            _logger.warning("Could not apply collision to bucket: %s", exc)
 
     rigid_bucket = RigidPrim(bucket.bucket_prim_path, name="bucket_rigid")
     rigid_bucket.initialize()
 
     initial_count = manager.count_pieces_in_container()
     initial_pos, _ = manager.get_container_pose()
-    print(f"Initial pieces in bucket: {initial_count} / {bucket.get_piece_count()}")
+    _logger.info(
+        "Initial pieces in bucket: %d / %d",
+        initial_count,
+        bucket.get_piece_count(),
+    )
 
     for step in range(args.steps):
         if args.force_step <= step < args.force_step + args.force_steps:
@@ -97,14 +117,14 @@ def main() -> None:
         world.step(render=not args.headless)
         if step % 60 == 0:
             count = manager.count_pieces_in_container()
-            print(f"Step {step:03d}: pieces in bucket = {count}")
+            _logger.info("Step %03d: pieces in bucket = %d", step, count)
 
     final_pos, _ = manager.get_container_pose()
     displacement = float(np.linalg.norm(final_pos - initial_pos))
     final_count = manager.count_pieces_in_container()
 
     if displacement < args.min_displacement:
-        print("Bucket did not move enough, applying manual offset for tracking check.")
+        _logger.info("Bucket did not move enough, applying manual offset for tracking check.")
         rigid_bucket.set_world_poses(
             positions=np.array([[initial_pos[0] + 0.5, initial_pos[1], initial_pos[2]]], dtype=np.float32)
         )
@@ -112,8 +132,11 @@ def main() -> None:
             world.step(render=not args.headless)
         final_count = manager.count_pieces_in_container()
 
-    print(
-        f"Final pieces in bucket: {final_count} / {bucket.get_piece_count()} (bucket displacement {displacement:.3f} m)"
+    _logger.info(
+        "Final pieces in bucket: %d / %d (bucket displacement %.3f m)",
+        final_count,
+        bucket.get_piece_count(),
+        displacement,
     )
 
     simulation_app.close()

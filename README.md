@@ -23,3 +23,5 @@ Args:
 - `--force-step`: step index to start applying force
 - `--force-steps`: number of steps to keep force active
 - `--min-displacement`: minimum bucket displacement before applying fallback offset
+- `--no-physics`: disable physics and use a PointInstancer
+- `--piece-mass`: mass of each popcorn piece in kg
