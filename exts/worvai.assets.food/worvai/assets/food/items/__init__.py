@@ -14,7 +14,6 @@ from .definitions import (
     TACO_EDIBLE,
     TACO_PIECE_USD,
 )
-from .edibles import PopcornAsset, PopcornBucket, PopcornBucketManager, spawn_popcorn_bucket
 
 __all__ = [
     "FoodBucket",
@@ -34,3 +33,26 @@ __all__ = [
     "TACO_PIECE_USD",
     "spawn_popcorn_bucket",
 ]
+
+
+def __getattr__(name: str):
+    if name in {
+        "PopcornAsset",
+        "PopcornBucket",
+        "PopcornBucketManager",
+        "spawn_popcorn_bucket",
+    }:
+        from .edibles import (
+            PopcornAsset,
+            PopcornBucket,
+            PopcornBucketManager,
+            spawn_popcorn_bucket,
+        )
+
+        return {
+            "PopcornAsset": PopcornAsset,
+            "PopcornBucket": PopcornBucket,
+            "PopcornBucketManager": PopcornBucketManager,
+            "spawn_popcorn_bucket": spawn_popcorn_bucket,
+        }[name]
+    raise AttributeError(f"module '{__name__}' has no attribute '{name}'")
