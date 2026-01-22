@@ -1,7 +1,13 @@
-"""Point instancer helpers for food assets."""
+"""
+Point instancer helpers for food assets.
+
+This module provides utilities for spawning visual-only pieces using USD
+PointInstancer prims (no physics simulation).
+"""
 
 from __future__ import annotations
 
+import logging
 from typing import Optional, Sequence, Tuple, Union
 
 import numpy as np
@@ -11,6 +17,8 @@ from pxr import Gf, Usd, UsdGeom
 from .backend import SpawnBackend, get_spawn_backend
 from .orientation import quat_multiply, quat_to_numpy, sample_rotations
 from .paths import ensure_asset_exists
+
+_logger = logging.getLogger(__name__)
 
 
 def spawn_pieces_instancer(
@@ -24,6 +32,27 @@ def spawn_pieces_instancer(
     backend: Union[str, SpawnBackend, None] = None,
     prototype_path: Optional[str] = None,
 ) -> str:
+    """
+    Spawn instanced pieces using a USD PointInstancer.
+
+    Args:
+        piece_count: Number of pieces to spawn.
+        instancer_path: USD path for the PointInstancer prim.
+        usd_path: Path to the piece USD asset.
+        spawn_bounds: (min_xyz, max_xyz) tuple defining spawn volume.
+        seed: Random seed for reproducibility.
+        piece_scale: Optional scale override for pieces.
+        randomize_rotation: Whether to randomize piece orientations.
+        backend: Spawn backend ("numpy" or "warp").
+        prototype_path: Optional path for the prototype prim.
+
+    Returns:
+        The instancer prim path.
+
+    Raises:
+        RuntimeError: If no USD stage is open.
+        ValueError: If a non-instancer prim exists at the path.
+    """
     ensure_asset_exists(usd_path)
     stage = stage_utils.get_current_stage()
     if stage is None:
@@ -72,16 +101,34 @@ def spawn_pieces_instancer(
         scale_vec = Gf.Vec3f(float(piece_scale[0]), float(piece_scale[1]), float(piece_scale[2]))
         instancer.CreateScalesAttr().Set([scale_vec for _ in range(piece_count)])
 
+    _logger.debug("Created point instancer at %s with %d pieces", instancer_path, piece_count)
     return instancer_path
 
 
 def get_instancer_poses(instancer_path: str) -> Tuple[np.ndarray, np.ndarray]:
+    """
+    Get world-space positions and orientations of all instanced pieces.
+
+    Args:
+        instancer_path: USD path to the PointInstancer prim.
+
+    Returns:
+        Tuple of (positions, orientations) arrays:
+        - positions: Shape (N, 3), world-space XYZ positions.
+        - orientations: Shape (N, 4), quaternions as (w, x, y, z).
+
+    Raises:
+        RuntimeError: If no stage is open or prim not found.
+        ValueError: If the prim is not a PointInstancer.
+    """
     stage = stage_utils.get_current_stage()
     if stage is None:
         raise RuntimeError("No USD stage is open.")
     prim = stage.GetPrimAtPath(instancer_path)
     if not prim.IsValid():
         raise RuntimeError(f"Instancer prim not found: {instancer_path}")
+    if not prim.IsA(UsdGeom.PointInstancer):
+        raise ValueError(f"Prim at {instancer_path} is not a PointInstancer.")
     instancer = UsdGeom.PointInstancer(prim)
     positions_attr = instancer.GetPositionsAttr()
     positions = positions_attr.Get() or []

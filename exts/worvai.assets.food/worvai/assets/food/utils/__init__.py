@@ -10,6 +10,7 @@ from .orientation import (
     quat_to_numpy,
     sample_rotations,
 )
+from .physics_instancer import spawn_physics_pieces
 
 __all__ = [
     "NumpyBackend",
@@ -24,6 +25,7 @@ __all__ = [
     "quat_to_numpy",
     "sample_rotations",
     "spawn_pieces_instancer",
+    "spawn_physics_pieces",
     "update_app",
     "update_app_async",
 ]

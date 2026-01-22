@@ -1,4 +1,9 @@
-"""Bounds helpers for food assets."""
+"""
+Bounds helpers for food assets.
+
+This module provides utilities for computing bounding boxes and spawn regions
+for food container prims.
+"""
 
 from __future__ import annotations
 
@@ -13,7 +18,20 @@ from pxr import UsdGeom
 def compute_safe_bounds(
     prim_path: str, bbox_cache: Optional[UsdGeom.BBoxCache] = None
 ) -> Tuple[np.ndarray, bool]:
-    """Compute a prim AABB and report if the bounds are valid."""
+    """
+    Compute a prim AABB and report if the bounds are valid.
+
+    Args:
+        prim_path: USD prim path to compute bounds for.
+        bbox_cache: Optional bbox cache to reuse.
+
+    Returns:
+        Tuple of (bounds array, is_valid boolean).
+
+    Raises:
+        RuntimeError: If no active stage is found.
+        ValueError: If the prim is not found.
+    """
     stage = stage_utils.get_current_stage()
     if stage is None:
         raise RuntimeError("No active stage found.")
@@ -41,6 +59,24 @@ def compute_safe_bounds(
 def compute_prim_bounds(
     prim_path: str, spawn_margin: float, fill_ratio: float
 ) -> Tuple[np.ndarray, np.ndarray]:
+    """
+    Compute spawn bounds for pieces inside a container.
+
+    This function computes a reduced bounding box suitable for spawning pieces
+    inside a container, accounting for margins and fill ratio.
+
+    Args:
+        prim_path: USD prim path of the container.
+        spawn_margin: Margin to inset from the container edges.
+        fill_ratio: Fraction of the container height to fill (0.0-1.0].
+
+    Returns:
+        Tuple of (min_xyz, max_xyz) arrays defining the spawn region.
+
+    Raises:
+        ValueError: If spawn_margin < 0 or fill_ratio not in (0, 1].
+        RuntimeError: If no active stage is found.
+    """
     if spawn_margin < 0.0:
         raise ValueError("spawn_margin must be >= 0")
     if fill_ratio <= 0.0 or fill_ratio > 1.0:
