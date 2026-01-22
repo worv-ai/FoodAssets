@@ -15,14 +15,8 @@ from isaacsim.core.utils import stage as stage_utils
 from pxr import Usd, UsdGeom, UsdPhysics
 
 from ...core.base import TrackableContainer
-from ...utils import (
-    SpawnBackend,
-    compute_prim_bounds,
-    spawn_pieces_instancer,
-    spawn_physics_pieces,
-    update_app,
-    update_app_async,
-)
+from ..piece_spawners import RigidBodyPieceSpawner, spawn_point_instancer_pieces
+from ...utils import SpawnBackend, compute_prim_bounds, update_app, update_app_async
 from ...utils.paths import ensure_asset_exists
 
 _logger = logging.getLogger(__name__)
@@ -348,7 +342,7 @@ class FoodBucket(TrackableContainer):
 
         if enable_physics:
             _logger.debug("Spawning %d physics pieces", piece_count)
-            return spawn_physics_pieces(
+            return RigidBodyPieceSpawner.spawn(
                 piece_count=piece_count,
                 pieces_parent_path=instancer_path,
                 usd_path=piece_usd_path,
@@ -364,7 +358,7 @@ class FoodBucket(TrackableContainer):
             )
         else:
             _logger.debug("Spawning %d instanced pieces", piece_count)
-            spawn_pieces_instancer(
+            spawn_point_instancer_pieces(
                 piece_count=piece_count,
                 instancer_path=instancer_path,
                 usd_path=piece_usd_path,

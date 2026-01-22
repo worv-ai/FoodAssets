@@ -15,7 +15,7 @@ from isaacsim.core.utils import prims as prims_utils
 from isaacsim.core.utils import xforms as xforms_utils
 
 from .base import TrackableContainer
-from ..utils import get_instancer_poses
+from ..items.piece_spawners import get_point_instancer_poses
 
 
 class ContainerManager:
@@ -178,15 +178,13 @@ class ContainerManager:
         """Get world-space positions and orientations for all pieces."""
         if self._container.is_physics_enabled():
             return self._get_physics_piece_poses()
-        return get_instancer_poses(self._container.get_instancer_path())
+        return get_point_instancer_poses(self._container.get_instancer_path())
 
     def _get_physics_piece_poses(self) -> Tuple[np.ndarray, np.ndarray]:
         """Resolve poses for physics-enabled pieces."""
         piece_paths = self._container.get_piece_paths()
         if not piece_paths:
-            raise RuntimeError(
-                "Physics-enabled container did not provide piece paths."
-            )
+            raise RuntimeError("Physics-enabled container did not provide piece paths.")
 
         positions = np.zeros((len(piece_paths), 3), dtype=np.float32)
         orientations = np.zeros((len(piece_paths), 4), dtype=np.float32)
