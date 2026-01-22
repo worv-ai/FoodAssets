@@ -12,7 +12,7 @@ from dataclasses import dataclass
 from typing import List, Optional, Sequence, Union
 
 from isaacsim.core.utils import stage as stage_utils
-from pxr import UsdGeom, UsdPhysics
+from pxr import Usd, UsdGeom, UsdPhysics
 
 from ...core.base import TrackableContainer
 from ...utils import (
@@ -276,14 +276,44 @@ class FoodBucket(TrackableContainer):
         rb_api = UsdPhysics.RigidBodyAPI.Apply(bucket_prim)
         rb_api.CreateRigidBodyEnabledAttr(True)
 
-        # Apply collision API
-        UsdPhysics.CollisionAPI.Apply(bucket_prim)
+        if bucket_prim.HasAPI(UsdPhysics.CollisionAPI):
+            bucket_prim.RemoveAPI(UsdPhysics.CollisionAPI)
+        if bucket_prim.HasAPI(UsdPhysics.MeshCollisionAPI):
+            bucket_prim.RemoveAPI(UsdPhysics.MeshCollisionAPI)
 
-        # Apply collision to mesh children
-        for child in bucket_prim.GetAllChildren():
-            if child.IsA(UsdGeom.Mesh):
-                mesh_collision_api = UsdPhysics.MeshCollisionAPI.Apply(child)
-                mesh_collision_api.CreateApproximationAttr("convexHull")
+        found_mesh = False
+        # Prefer meshes already marked for collision
+        for prim in Usd.PrimRange(bucket_prim):
+            if not prim.IsA(UsdGeom.Mesh):
+                continue
+            if prim.HasAPI(UsdPhysics.CollisionAPI) or prim.HasAPI(
+                UsdPhysics.MeshCollisionAPI
+            ):
+                found_mesh = True
+                UsdPhysics.CollisionAPI.Apply(prim)
+                mesh_collision_api = UsdPhysics.MeshCollisionAPI.Apply(prim)
+                approx_attr = mesh_collision_api.GetApproximationAttr()
+                if not approx_attr:
+                    approx_attr = mesh_collision_api.CreateApproximationAttr()
+                approx_attr.Set("convexHull")
+
+        # Fall back to all mesh prims if none were flagged
+        if not found_mesh:
+            for prim in Usd.PrimRange(bucket_prim):
+                if not prim.IsA(UsdGeom.Mesh):
+                    continue
+                found_mesh = True
+                UsdPhysics.CollisionAPI.Apply(prim)
+                mesh_collision_api = UsdPhysics.MeshCollisionAPI.Apply(prim)
+                approx_attr = mesh_collision_api.GetApproximationAttr()
+                if not approx_attr:
+                    approx_attr = mesh_collision_api.CreateApproximationAttr()
+                approx_attr.Set("convexHull")
+
+        if not found_mesh:
+            _logger.warning(
+                "No mesh prims found for collision under %s", bucket_prim_path
+            )
 
         _logger.debug("Applied physics to bucket at %s", bucket_prim_path)
 

@@ -11,8 +11,9 @@ import logging
 from typing import List, Optional, Sequence, Tuple, Union
 
 import numpy as np
+from isaacsim.core.simulation_manager import SimulationManager
 from isaacsim.core.utils import stage as stage_utils
-from pxr import Gf, UsdGeom, UsdPhysics
+from pxr import Gf, Usd, UsdGeom, UsdPhysics
 
 from .backend import SpawnBackend, get_spawn_backend
 from .orientation import quat_to_numpy, sample_rotations
@@ -79,6 +80,14 @@ class PhysicsPieceSpawner:
         if not stage.GetPrimAtPath("/World").IsValid():
             stage.DefinePrim("/World", "Xform")
 
+        sim_device = PhysicsPieceSpawner._resolve_sim_device()
+        enable_ccd = PhysicsPieceSpawner._normalize_ccd_for_device(
+            enable_ccd, sim_device
+        )
+        PhysicsPieceSpawner._warn_on_collision_compatibility(
+            sim_device, enable_collision, collision_approximation
+        )
+
         # Create parent container for all pieces
         parent_prim = stage.GetPrimAtPath(pieces_parent_path)
         if not parent_prim.IsValid():
@@ -92,7 +101,9 @@ class PhysicsPieceSpawner:
             dtype=np.float32,
         )
 
-        orientations = sample_rotations(randomize_rotation, piece_count, backend_obj, seed)
+        orientations = sample_rotations(
+            randomize_rotation, piece_count, backend_obj, seed
+        )
 
         _logger.debug(
             "Spawning %d physics pieces under %s", piece_count, pieces_parent_path
@@ -121,9 +132,12 @@ class PhysicsPieceSpawner:
             quat_np = quat_to_numpy(quat)
             # Convert to Gf.Quatf (w, x, y, z) - USD uses (real, i, j, k) = (w, x, y, z)
             gf_quat = Gf.Quatf(
-                float(quat_np[0]), float(quat_np[1]), float(quat_np[2]), float(quat_np[3])
+                float(quat_np[0]),
+                float(quat_np[1]),
+                float(quat_np[2]),
+                float(quat_np[3]),
             )
-            xformable.AddOrientOp().Set(Gf.Quatd(gf_quat))
+            xformable.AddOrientOp().Set(gf_quat)
 
             # Apply scale if specified
             if piece_scale:
@@ -155,6 +169,49 @@ class PhysicsPieceSpawner:
         return piece_paths
 
     @staticmethod
+    def _resolve_sim_device() -> str:
+        """Return the current physics simulation device string."""
+        try:
+            device = SimulationManager.get_physics_sim_device()
+        except Exception as exc:
+            _logger.warning(
+                "Failed to resolve physics sim device, assuming CPU: %s", exc
+            )
+            return "cpu"
+        return device or "cpu"
+
+    @staticmethod
+    def _normalize_ccd_for_device(enable_ccd: bool, sim_device: str) -> bool:
+        """Normalize CCD settings based on the current simulation device."""
+        if enable_ccd and "cuda" in sim_device:
+            _logger.warning(
+                "CCD requested while GPU dynamics is enabled; CCD is disabled in GPU mode. "
+                "Disabling CCD for pieces."
+            )
+            return False
+        return enable_ccd
+
+    @staticmethod
+    def _warn_on_collision_compatibility(
+        sim_device: str,
+        enable_collision: bool,
+        collision_approximation: str,
+    ) -> None:
+        """Warn about collision compatibility risks in GPU simulation."""
+        if not enable_collision or "cuda" not in sim_device:
+            return
+
+        safe_approximations = {"convexHull", "boundingSphere", "boundingCube"}
+        if collision_approximation in safe_approximations:
+            return
+
+        _logger.warning(
+            "GPU dynamics enabled with collision approximation '%s'. Some collider types are "
+            "CPU-only or unsupported in GPU mode; collisions may fall back to CPU.",
+            collision_approximation,
+        )
+
+    @staticmethod
     def _apply_collision(
         piece_prim,
         collision_approximation: str,
@@ -168,14 +225,44 @@ class PhysicsPieceSpawner:
             collision_approximation: Collision shape approximation type.
             physics_material_path: Optional physics material path to bind.
         """
-        # Apply collision API to the root prim
-        UsdPhysics.CollisionAPI.Apply(piece_prim)
+        if piece_prim.HasAPI(UsdPhysics.CollisionAPI):
+            piece_prim.RemoveAPI(UsdPhysics.CollisionAPI)
+        if piece_prim.HasAPI(UsdPhysics.MeshCollisionAPI):
+            piece_prim.RemoveAPI(UsdPhysics.MeshCollisionAPI)
 
-        # Find mesh children and apply mesh collision API
-        for child in piece_prim.GetAllChildren():
-            if child.IsA(UsdGeom.Mesh):
-                mesh_collision_api = UsdPhysics.MeshCollisionAPI.Apply(child)
-                mesh_collision_api.CreateApproximationAttr(collision_approximation)
+        found_mesh = False
+        # Prefer meshes already marked for collision
+        for prim in Usd.PrimRange(piece_prim):
+            if not prim.IsA(UsdGeom.Mesh):
+                continue
+            if prim.HasAPI(UsdPhysics.CollisionAPI) or prim.HasAPI(
+                UsdPhysics.MeshCollisionAPI
+            ):
+                found_mesh = True
+                UsdPhysics.CollisionAPI.Apply(prim)
+                mesh_collision_api = UsdPhysics.MeshCollisionAPI.Apply(prim)
+                approx_attr = mesh_collision_api.GetApproximationAttr()
+                if not approx_attr:
+                    approx_attr = mesh_collision_api.CreateApproximationAttr()
+                approx_attr.Set(collision_approximation)
+
+        # Fall back to all mesh prims if none were flagged
+        if not found_mesh:
+            for prim in Usd.PrimRange(piece_prim):
+                if not prim.IsA(UsdGeom.Mesh):
+                    continue
+                found_mesh = True
+                UsdPhysics.CollisionAPI.Apply(prim)
+                mesh_collision_api = UsdPhysics.MeshCollisionAPI.Apply(prim)
+                approx_attr = mesh_collision_api.GetApproximationAttr()
+                if not approx_attr:
+                    approx_attr = mesh_collision_api.CreateApproximationAttr()
+                approx_attr.Set(collision_approximation)
+
+        if not found_mesh:
+            _logger.warning(
+                "No mesh prims found for collision under %s", piece_prim.GetPath()
+            )
 
         # Apply physics material if provided
         if physics_material_path:
