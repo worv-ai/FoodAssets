@@ -6,6 +6,7 @@ import omni.kit.app
 
 
 def update_app(steps: int) -> None:
+    """Advance the Isaac Sim app by a number of update steps."""
     if steps <= 0:
         return
     app = omni.kit.app.get_app()
@@ -14,6 +15,7 @@ def update_app(steps: int) -> None:
 
 
 async def update_app_async(steps: int) -> None:
+    """Advance the Isaac Sim app asynchronously by a number of update steps."""
     if steps <= 0:
         return
     app = omni.kit.app.get_app()
