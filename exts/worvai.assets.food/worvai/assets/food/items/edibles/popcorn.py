@@ -1,11 +1,8 @@
-"""Popcorn asset implementation for worvai.assets.food."""
-
 from __future__ import annotations
 
+from importlib import import_module
 from pathlib import Path
 from typing import Optional, Sequence, Union
-
-import omni.kit.app
 
 from ...core.base import FoodAsset, FoodAssetPaths, register_food_asset
 from ...core.manager import FoodBucketManager
@@ -15,25 +12,18 @@ from ..definitions import POPCORN_CONTAINER, POPCORN_EDIBLE
 
 
 class PopcornBucket(FoodBucket):
-    """Popcorn bucket with optional overrides for future behavior."""
-
     pass
 
 
 class PopcornBucketManager(FoodBucketManager):
-    """Popcorn-specific manager for future specialization."""
-
     pass
 
 
 class PopcornAsset(FoodAsset):
-    """Popcorn food asset definition."""
-
     name = "popcorn"
 
     def get_asset_paths(self) -> FoodAssetPaths:
-        """Return USD asset paths for the popcorn bucket and piece."""
-        ext_manager = omni.kit.app.get_app().get_extension_manager()
+        ext_manager = import_module("omni.kit.app").get_app().get_extension_manager()
         ext_path = ext_manager.get_extension_path_by_module("worvai.assets.food")
         if ext_path:
             assets_dir = Path(ext_path) / "assets"
@@ -44,21 +34,35 @@ class PopcornAsset(FoodAsset):
             piece_usd=(assets_dir / POPCORN_EDIBLE.usd).as_posix(),
         )
 
-    def spawn(self, **kwargs) -> PopcornBucket:
-        """Spawn a popcorn bucket synchronously."""
+    def spawn(
+        self,
+        *,
+        container_usd_path: Optional[str] = None,
+        piece_usd_path: Optional[str] = None,
+        **kwargs,
+    ) -> FoodBucket:
         paths = self.get_asset_paths()
+        resolved_container = container_usd_path or paths.container_usd
+        resolved_piece = piece_usd_path or paths.piece_usd
         return PopcornBucket.spawn(
-            container_usd_path=paths.container_usd,
-            piece_usd_path=paths.piece_usd,
+            container_usd_path=resolved_container,
+            piece_usd_path=resolved_piece,
             **kwargs,
         )
 
-    async def spawn_async(self, **kwargs) -> PopcornBucket:
-        """Spawn a popcorn bucket asynchronously."""
+    async def spawn_async(
+        self,
+        *,
+        container_usd_path: Optional[str] = None,
+        piece_usd_path: Optional[str] = None,
+        **kwargs,
+    ) -> FoodBucket:
         paths = self.get_asset_paths()
+        resolved_container = container_usd_path or paths.container_usd
+        resolved_piece = piece_usd_path or paths.piece_usd
         return await PopcornBucket.spawn_async(
-            container_usd_path=paths.container_usd,
-            piece_usd_path=paths.piece_usd,
+            container_usd_path=resolved_container,
+            piece_usd_path=resolved_piece,
             **kwargs,
         )
 
@@ -69,39 +73,23 @@ def spawn_popcorn_bucket(
     piece_count: int = 50,
     spawn_margin: float = 0.02,
     fill_ratio: float = 0.6,
+    separation_scale: float = 2.0,
     seed: Optional[int] = None,
     update_steps: int = 2,
     piece_scale: Optional[Sequence[float]] = None,
     randomize_rotation: bool = True,
     backend: Union[str, SpawnBackend, None] = None,
     enable_physics: bool = True,
+    enable_instancer_physics: bool = False,
     piece_mass: float = 0.001,
     enable_collision: bool = True,
     collision_approximation: str = "convexHull",
     enable_ccd: bool = False,
     apply_bucket_physics: bool = True,
-) -> PopcornBucket:
-    """
-    Spawn a popcorn bucket with physics-enabled pieces.
-
-    Args:
-        bucket_prim_path: USD path for the bucket
-        instancer_path: USD path for pieces parent
-        piece_count: Number of popcorn pieces
-        spawn_margin: Margin from bucket edges (meters)
-        fill_ratio: How full the bucket is (0.0-1.0)
-        seed: Random seed
-        update_steps: Update steps after spawning
-        piece_scale: Optional scale override
-        randomize_rotation: Randomize piece orientations
-        backend: Spawn backend ("numpy" or "warp")
-        enable_physics: Enable physics simulation on pieces
-        piece_mass: Mass per piece in kg
-        enable_collision: Enable collision on pieces
-        collision_approximation: Collision shape type
-        enable_ccd: Enable Continuous Collision Detection
-        apply_bucket_physics: Apply physics to bucket
-    """
+    physics_material_path: Optional[str] = None,
+    container_usd_path: Optional[str] = None,
+    piece_usd_path: Optional[str] = None,
+) -> FoodBucket:
     asset = PopcornAsset()
     return asset.spawn(
         bucket_prim_path=bucket_prim_path,
@@ -109,17 +97,22 @@ def spawn_popcorn_bucket(
         piece_count=piece_count,
         spawn_margin=spawn_margin,
         fill_ratio=fill_ratio,
+        separation_scale=separation_scale,
         seed=seed,
         update_steps=update_steps,
         piece_scale=piece_scale,
         randomize_rotation=randomize_rotation,
         backend=backend,
         enable_physics=enable_physics,
+        enable_instancer_physics=enable_instancer_physics,
         piece_mass=piece_mass,
         enable_collision=enable_collision,
         collision_approximation=collision_approximation,
         enable_ccd=enable_ccd,
         apply_bucket_physics=apply_bucket_physics,
+        physics_material_path=physics_material_path,
+        container_usd_path=container_usd_path,
+        piece_usd_path=piece_usd_path,
     )
 
 
