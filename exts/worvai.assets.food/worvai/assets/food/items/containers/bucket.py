@@ -107,6 +107,7 @@ class FoodBucket(TrackableContainer):
         piece_count: int = 50,
         spawn_margin: float = 0.02,
         fill_ratio: float = 0.6,
+        separation_scale: float = 2.0,
         seed: Optional[int] = None,
         update_steps: int = 2,
         piece_scale: Optional[Sequence[float]] = None,
@@ -132,6 +133,7 @@ class FoodBucket(TrackableContainer):
             piece_count: Number of pieces to spawn.
             spawn_margin: Margin from bucket edges (meters).
             fill_ratio: How full the bucket is (0.0-1.0).
+            separation_scale: Multiplier on collider diameter for spacing between pieces.
             seed: Random seed for reproducibility.
             update_steps: Number of app update steps after spawning.
             piece_scale: Optional scale override for pieces.
@@ -162,6 +164,7 @@ class FoodBucket(TrackableContainer):
             piece_count=piece_count,
             spawn_margin=spawn_margin,
             fill_ratio=fill_ratio,
+            separation_scale=separation_scale,
             seed=seed,
             piece_scale=piece_scale,
             randomize_rotation=randomize_rotation,
@@ -197,6 +200,7 @@ class FoodBucket(TrackableContainer):
         piece_count: int = 50,
         spawn_margin: float = 0.02,
         fill_ratio: float = 0.6,
+        separation_scale: float = 2.0,
         seed: Optional[int] = None,
         update_steps: int = 2,
         piece_scale: Optional[Sequence[float]] = None,
@@ -229,6 +233,7 @@ class FoodBucket(TrackableContainer):
             piece_count=piece_count,
             spawn_margin=spawn_margin,
             fill_ratio=fill_ratio,
+            separation_scale=separation_scale,
             seed=seed,
             piece_scale=piece_scale,
             randomize_rotation=randomize_rotation,
@@ -330,6 +335,7 @@ class FoodBucket(TrackableContainer):
         piece_count: int,
         spawn_margin: float,
         fill_ratio: float,
+        separation_scale: float,
         seed: Optional[int],
         piece_scale: Optional[Sequence[float]],
         randomize_rotation: bool,
@@ -368,6 +374,8 @@ class FoodBucket(TrackableContainer):
                 collision_approximation=collision_approximation,
                 enable_ccd=enable_ccd,
                 physics_material_path=physics_material_path,
+                container_prim_path=bucket_prim_path,
+                separation_scale=separation_scale,
             )
         else:
             _logger.debug("Spawning %d instanced pieces", piece_count)
@@ -385,5 +393,7 @@ class FoodBucket(TrackableContainer):
                 enable_collision=enable_collision,
                 collision_approximation=collision_approximation,
                 physics_material_path=physics_material_path,
+                container_prim_path=bucket_prim_path,
+                separation_scale=separation_scale,
             )
             return None

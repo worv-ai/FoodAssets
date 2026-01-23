@@ -259,6 +259,7 @@ class Extension(omni.ext.IExt):
         self._piece_count_model = ui.SimpleIntModel(50)
         self._spawn_margin_model = ui.SimpleFloatModel(0.02)
         self._fill_ratio_model = ui.SimpleFloatModel(0.6)
+        self._separation_scale_model = ui.SimpleFloatModel(2.0)
         self._update_steps_model = ui.SimpleIntModel(2)
         self._seed_model = ui.SimpleStringModel("")
         self._randomize_rotation_model = ui.SimpleBoolModel(True)
@@ -315,6 +316,9 @@ class Extension(omni.ext.IExt):
                 with ui.HStack():
                     ui.Label("Fill ratio", width=140)
                     ui.FloatField(self._fill_ratio_model)
+                with ui.HStack():
+                    ui.Label("Separation scale", width=140)
+                    ui.FloatField(self._separation_scale_model)
                 with ui.HStack():
                     ui.Label("Update steps", width=140)
                     ui.IntField(self._update_steps_model)
@@ -536,6 +540,9 @@ class Extension(omni.ext.IExt):
             "piece_count": int(self._piece_count_model.get_value_as_int()),
             "spawn_margin": float(self._spawn_margin_model.get_value_as_float()),
             "fill_ratio": float(self._fill_ratio_model.get_value_as_float()),
+            "separation_scale": float(
+                self._separation_scale_model.get_value_as_float()
+            ),
             "seed": seed,
             "update_steps": int(self._update_steps_model.get_value_as_int()),
             "randomize_rotation": bool(
