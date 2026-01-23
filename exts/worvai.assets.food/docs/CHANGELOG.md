@@ -7,6 +7,8 @@
 - Added omni.kit.test coverage for CPU/GPU CCD and collision warning scenarios.
 - Added extension metadata and test configuration in `extension.toml`.
 - Added `actions_api.md` generation for extension actions.
+
+- Added `separation_scale` spawn parameter and UI control for spacing between pieces.
 ### Changed
 - Moved spawner logic out of `utils` to keep helpers thin.
 - Updated docs to reference new spawner locations and asset overrides.
