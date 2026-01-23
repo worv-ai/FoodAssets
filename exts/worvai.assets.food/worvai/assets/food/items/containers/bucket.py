@@ -113,11 +113,13 @@ class FoodBucket(TrackableContainer):
         randomize_rotation: bool = True,
         backend: Union[str, SpawnBackend, None] = None,
         enable_physics: bool = True,
+        enable_instancer_physics: bool = False,
         piece_mass: float = 0.001,
         enable_collision: bool = True,
         collision_approximation: str = "convexHull",
         enable_ccd: bool = False,
         apply_bucket_physics: bool = True,
+        physics_material_path: Optional[str] = None,
     ) -> "FoodBucket":
         """
         Spawn a food bucket with pieces (synchronous).
@@ -136,11 +138,13 @@ class FoodBucket(TrackableContainer):
             randomize_rotation: Whether to randomize piece orientations.
             backend: Spawn backend ("numpy" or "warp").
             enable_physics: If True, spawn rigid bodies; if False, use point instancer.
-            piece_mass: Mass of each piece in kg (physics mode only).
-            enable_collision: Enable collision on pieces (physics mode only).
-            collision_approximation: Collision shape type (physics mode only).
-            enable_ccd: Enable Continuous Collision Detection (physics mode only).
+            enable_instancer_physics: Apply physics to point instancer prototypes.
+            piece_mass: Mass of each piece in kg (physics-enabled modes).
+            enable_collision: Enable collision on pieces (physics-enabled modes).
+            collision_approximation: Collision shape type (physics-enabled modes).
+            enable_ccd: Enable Continuous Collision Detection (physics-enabled modes).
             apply_bucket_physics: Apply rigid body physics to the bucket itself.
+            physics_material_path: Optional physics material path to bind to pieces.
 
         Returns:
             A FoodBucket instance representing the spawned container.
@@ -163,10 +167,12 @@ class FoodBucket(TrackableContainer):
             randomize_rotation=randomize_rotation,
             backend=backend,
             enable_physics=enable_physics,
+            enable_instancer_physics=enable_instancer_physics,
             piece_mass=piece_mass,
             enable_collision=enable_collision,
             collision_approximation=collision_approximation,
             enable_ccd=enable_ccd,
+            physics_material_path=physics_material_path,
         )
 
         update_app(update_steps)
@@ -197,11 +203,13 @@ class FoodBucket(TrackableContainer):
         randomize_rotation: bool = True,
         backend: Union[str, SpawnBackend, None] = None,
         enable_physics: bool = True,
+        enable_instancer_physics: bool = False,
         piece_mass: float = 0.001,
         enable_collision: bool = True,
         collision_approximation: str = "convexHull",
         enable_ccd: bool = False,
         apply_bucket_physics: bool = True,
+        physics_material_path: Optional[str] = None,
     ) -> "FoodBucket":
         """
         Spawn a food bucket with pieces (asynchronous).
@@ -226,10 +234,12 @@ class FoodBucket(TrackableContainer):
             randomize_rotation=randomize_rotation,
             backend=backend,
             enable_physics=enable_physics,
+            enable_instancer_physics=enable_instancer_physics,
             piece_mass=piece_mass,
             enable_collision=enable_collision,
             collision_approximation=collision_approximation,
             enable_ccd=enable_ccd,
+            physics_material_path=physics_material_path,
         )
 
         await update_app_async(update_steps)
@@ -325,10 +335,12 @@ class FoodBucket(TrackableContainer):
         randomize_rotation: bool,
         backend: Union[str, SpawnBackend, None],
         enable_physics: bool,
+        enable_instancer_physics: bool,
         piece_mass: float,
         enable_collision: bool,
         collision_approximation: str,
         enable_ccd: bool,
+        physics_material_path: Optional[str],
     ) -> Optional[List[str]]:
         """
         Spawn pieces using either physics or point instancer mode.
@@ -355,6 +367,7 @@ class FoodBucket(TrackableContainer):
                 enable_collision=enable_collision,
                 collision_approximation=collision_approximation,
                 enable_ccd=enable_ccd,
+                physics_material_path=physics_material_path,
             )
         else:
             _logger.debug("Spawning %d instanced pieces", piece_count)
@@ -367,5 +380,10 @@ class FoodBucket(TrackableContainer):
                 piece_scale=piece_scale,
                 randomize_rotation=randomize_rotation,
                 backend=backend,
+                enable_physics=enable_instancer_physics,
+                piece_mass=piece_mass,
+                enable_collision=enable_collision,
+                collision_approximation=collision_approximation,
+                physics_material_path=physics_material_path,
             )
             return None

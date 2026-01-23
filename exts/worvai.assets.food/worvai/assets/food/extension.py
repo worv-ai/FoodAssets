@@ -52,6 +52,7 @@ class Extension(omni.ext.IExt):
         self._manager: Optional[ContainerManager] = None
         self._menu_items: List[MenuItemDescription] = []
         self._available_combo: Optional[ui.ComboBox] = None
+        self._physics_material_combo: Optional[ui.ComboBox] = None
 
         self._window = ui.Window(
             _WINDOW_TITLE,
@@ -76,6 +77,7 @@ class Extension(omni.ext.IExt):
         self._bucket = None
         self._manager = None
         self._available_combo = None
+        self._physics_material_combo = None
         global _INSTANCE
         _INSTANCE = None
         _logger.info("worvai.assets.food extension shutdown")
@@ -262,6 +264,7 @@ class Extension(omni.ext.IExt):
         self._randomize_rotation_model = ui.SimpleBoolModel(True)
         # Physics settings
         self._enable_physics_model = ui.SimpleBoolModel(True)
+        self._enable_instancer_physics_model = ui.SimpleBoolModel(False)
         self._piece_mass_model = ui.SimpleFloatModel(0.001)
         self._enable_collision_model = ui.SimpleBoolModel(True)
         self._collision_approx_items = [
@@ -270,7 +273,13 @@ class Extension(omni.ext.IExt):
             "boundingCube",
             "meshSimplification",
         ]
-        self._collision_approx_model = DynamicComboBoxModel(self._collision_approx_items)
+        self._collision_approx_model = DynamicComboBoxModel(
+            self._collision_approx_items
+        )
+        self._physics_material_items = ["None"]
+        self._physics_material_model = DynamicComboBoxModel(
+            self._physics_material_items
+        )
         self._enable_ccd_model = ui.SimpleBoolModel(False)
         self._apply_bucket_physics_model = ui.SimpleBoolModel(True)
         self._status_model = ui.SimpleStringModel("Ready")
@@ -322,6 +331,9 @@ class Extension(omni.ext.IExt):
                     ui.Label("Enable physics", width=140)
                     ui.CheckBox(self._enable_physics_model)
                 with ui.HStack():
+                    ui.Label("Instancer physics", width=140)
+                    ui.CheckBox(self._enable_instancer_physics_model)
+                with ui.HStack():
                     ui.Label("Piece mass (kg)", width=140)
                     ui.FloatField(self._piece_mass_model)
                 with ui.HStack():
@@ -329,7 +341,20 @@ class Extension(omni.ext.IExt):
                     ui.CheckBox(self._enable_collision_model)
                 with ui.HStack():
                     ui.Label("Collision approx", width=140)
-                    self._collision_approx_combo = ui.ComboBox(self._collision_approx_model)
+                    self._collision_approx_combo = ui.ComboBox(
+                        self._collision_approx_model
+                    )
+                with ui.HStack():
+                    ui.Label("Physics material", width=140)
+                    self._physics_material_combo = ui.ComboBox(
+                        self._physics_material_model
+                    )
+                with ui.HStack():
+                    ui.Label("", width=140)
+                    ui.Button(
+                        "Refresh Materials",
+                        clicked_fn=self._on_refresh_physics_materials_clicked,
+                    )
                 with ui.HStack():
                     ui.Label("Enable CCD", width=140)
                     ui.CheckBox(self._enable_ccd_model)
@@ -350,8 +375,11 @@ class Extension(omni.ext.IExt):
                     )
                 with ui.HStack():
                     ui.Label("Status", width=140)
-                    ui.StringField(self._status_model, read_only=True, width=ui.Fraction(1))
+                    ui.StringField(
+                        self._status_model, read_only=True, width=ui.Fraction(1)
+                    )
         self._sync_available_selection()
+        self._refresh_physics_materials()
 
     # -------------------------------------------------------------------------
     # Internal helpers: path defaults and selection utilities
@@ -385,6 +413,57 @@ class Extension(omni.ext.IExt):
             return self._backend_items[index]
         return None
 
+    def _get_selected_physics_material(self) -> Optional[str]:
+        index = self._physics_material_model.get_item_value_model().as_int
+        if 0 <= index < len(self._physics_material_items):
+            material = self._physics_material_items[index]
+            if material != "None":
+                return material
+        return None
+
+    def _apply_physics_material_items(self, items: List[str]) -> None:
+        selected = self._get_selected_physics_material()
+        self._physics_material_items = items
+        self._physics_material_model = DynamicComboBoxModel(
+            self._physics_material_items
+        )
+        if self._physics_material_combo is None:
+            return
+        self._physics_material_combo.model = self._physics_material_model
+        if selected and selected in self._physics_material_items:
+            index = self._physics_material_items.index(selected)
+            self._physics_material_combo.model.set_item_value_model(
+                ui.SimpleIntModel(index)
+            )
+
+    def _refresh_physics_materials(self) -> None:
+        try:
+            from isaacsim.core.utils import stage as stage_utils
+            from pxr import Usd, UsdPhysics, UsdShade
+        except Exception as exc:
+            _logger.warning("Failed to load physics material dependencies: %s", exc)
+            self._apply_physics_material_items(["None"])
+            return
+
+        stage = stage_utils.get_current_stage()
+        if stage is None:
+            self._apply_physics_material_items(["None"])
+            return
+
+        materials: List[str] = []
+        for prim in Usd.PrimRange(stage.GetPseudoRoot()):
+            if not prim.IsA(UsdShade.Material):
+                continue
+            if prim.HasAPI(UsdPhysics.MaterialAPI):
+                materials.append(prim.GetPath().pathString)
+
+        items = ["None"] + sorted(materials)
+        self._apply_physics_material_items(items)
+
+    def _on_refresh_physics_materials_clicked(self) -> None:
+        self._refresh_physics_materials()
+        self._set_status("Physics materials refreshed.")
+
     def _apply_food_name(self, food_name: str) -> None:
         food_name = food_name.strip()
         if not food_name:
@@ -393,10 +472,16 @@ class Extension(omni.ext.IExt):
         current_bucket = self._bucket_path_model.get_value_as_string().strip()
         current_instancer = self._instancer_path_model.get_value_as_string().strip()
         self._food_name_model.set_value(food_name)
-        if not current_bucket or current_bucket == self._default_bucket_path(current_name):
+        if not current_bucket or current_bucket == self._default_bucket_path(
+            current_name
+        ):
             self._bucket_path_model.set_value(self._default_bucket_path(food_name))
-        if not current_instancer or current_instancer == self._default_instancer_path(current_name):
-            self._instancer_path_model.set_value(self._default_instancer_path(food_name))
+        if not current_instancer or current_instancer == self._default_instancer_path(
+            current_name
+        ):
+            self._instancer_path_model.set_value(
+                self._default_instancer_path(food_name)
+            )
 
     def _sync_available_selection(self) -> None:
         if not self._available_items or self._available_combo is None:
@@ -432,9 +517,18 @@ class Extension(omni.ext.IExt):
             self._collision_approx_model.get_item_value_model().as_int
         )
         if 0 <= collision_approx_index < len(self._collision_approx_items):
-            collision_approximation = self._collision_approx_items[collision_approx_index]
+            collision_approximation = self._collision_approx_items[
+                collision_approx_index
+            ]
         else:
             collision_approximation = "convexHull"
+
+        enable_physics = bool(self._enable_physics_model.get_value_as_bool())
+        enable_instancer_physics = bool(
+            self._enable_instancer_physics_model.get_value_as_bool()
+        )
+        if enable_instancer_physics:
+            enable_physics = False
 
         settings = {
             "bucket_prim_path": bucket_prim_path,
@@ -449,10 +543,12 @@ class Extension(omni.ext.IExt):
             ),
             "backend": backend,
             # Physics settings
-            "enable_physics": bool(self._enable_physics_model.get_value_as_bool()),
+            "enable_physics": enable_physics,
+            "enable_instancer_physics": enable_instancer_physics,
             "piece_mass": float(self._piece_mass_model.get_value_as_float()),
             "enable_collision": bool(self._enable_collision_model.get_value_as_bool()),
             "collision_approximation": collision_approximation,
+            "physics_material_path": self._get_selected_physics_material(),
             "enable_ccd": bool(self._enable_ccd_model.get_value_as_bool()),
             "apply_bucket_physics": bool(
                 self._apply_bucket_physics_model.get_value_as_bool()
