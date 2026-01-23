@@ -14,22 +14,59 @@ _logger = logging.getLogger(__name__)
 
 def _parse_args() -> argparse.Namespace:
     """Parse command-line arguments for the demo script."""
-    parser = argparse.ArgumentParser(description="Spawn popcorn bucket and track pieces.")
-    parser.add_argument("--headless", action="store_true", help="Run Isaac Sim in headless mode.")
-    parser.add_argument("--backend", choices=["warp", "numpy"], default="warp", help="Spawn backend.")
-    parser.add_argument("--piece-count", type=int, default=100, help="Number of popcorn pieces.")
-    parser.add_argument("--force", type=float, default=500.0, help="Lateral force applied to the bucket.")
-    parser.add_argument("--steps", type=int, default=240, help="Total simulation steps.")
-    parser.add_argument("--force-step", type=int, default=30, help="Step index to apply force.")
-    parser.add_argument("--force-steps", type=int, default=10, help="Number of steps to keep the force active.")
+    parser = argparse.ArgumentParser(
+        description="Spawn popcorn bucket and track pieces."
+    )
+    parser.add_argument(
+        "--headless", action="store_true", help="Run Isaac Sim in headless mode."
+    )
+    parser.add_argument(
+        "--backend", choices=["warp", "numpy"], default="warp", help="Spawn backend."
+    )
+    parser.add_argument(
+        "--piece-count", type=int, default=100, help="Number of popcorn pieces."
+    )
+    parser.add_argument(
+        "--force",
+        type=float,
+        default=500.0,
+        help="Lateral force applied to the bucket.",
+    )
+    parser.add_argument(
+        "--steps", type=int, default=240, help="Total simulation steps."
+    )
+    parser.add_argument(
+        "--force-step", type=int, default=30, help="Step index to apply force."
+    )
+    parser.add_argument(
+        "--force-steps",
+        type=int,
+        default=10,
+        help="Number of steps to keep the force active.",
+    )
     parser.add_argument(
         "--min-displacement",
         type=float,
         default=0.05,
         help="Minimum displacement before applying manual fallback offset.",
     )
-    parser.add_argument("--no-physics", action="store_true", help="Disable physics (use point instancer only).")
-    parser.add_argument("--piece-mass", type=float, default=0.001, help="Mass of each popcorn piece in kg.")
+    mode_group = parser.add_mutually_exclusive_group()
+    mode_group.add_argument(
+        "--no-physics",
+        action="store_true",
+        help="Disable physics (use point instancer only).",
+    )
+    mode_group.add_argument(
+        "--instancer-physics",
+        action="store_true",
+        help="Use point instancer with physics-enabled prototype.",
+    )
+    parser.add_argument(
+        "--piece-mass",
+        type=float,
+        default=0.001,
+        help="Mass of each popcorn piece in kg.",
+    )
     return parser.parse_args()
 
 
@@ -60,6 +97,9 @@ def main() -> None:
         light.CreateAngleAttr(0.53)
         light.AddRotateXYZOp().Set(Gf.Vec3f(-45.0, 0.0, 0.0))
 
+    enable_instancer_physics = args.instancer_physics
+    enable_physics = not (args.no_physics or enable_instancer_physics)
+
     spawn_kwargs = {
         "bucket_prim_path": "/World/PopcornBucket",
         "instancer_path": "/World/PopcornPieces",
@@ -67,7 +107,8 @@ def main() -> None:
         "spawn_margin": 0.02,
         "fill_ratio": 0.6,
         "backend": args.backend,
-        "enable_physics": not args.no_physics,
+        "enable_physics": enable_physics,
+        "enable_instancer_physics": enable_instancer_physics,
         "piece_mass": args.piece_mass,
         "apply_bucket_physics": not args.no_physics,
     }
@@ -113,7 +154,9 @@ def main() -> None:
             force = np.array([[args.force, 0.0, 0.0]], dtype=np.float32)
             rigid_bucket.apply_forces(force, is_global=False)
         elif step == args.force_step + args.force_steps:
-            rigid_bucket.apply_forces(np.zeros((1, 3), dtype=np.float32), is_global=False)
+            rigid_bucket.apply_forces(
+                np.zeros((1, 3), dtype=np.float32), is_global=False
+            )
         world.step(render=not args.headless)
         if step % 60 == 0:
             count = manager.count_pieces_in_container()
@@ -124,9 +167,14 @@ def main() -> None:
     final_count = manager.count_pieces_in_container()
 
     if displacement < args.min_displacement:
-        _logger.info("Bucket did not move enough, applying manual offset for tracking check.")
+        _logger.info(
+            "Bucket did not move enough, applying manual offset for tracking check."
+        )
         rigid_bucket.set_world_poses(
-            positions=np.array([[initial_pos[0] + 0.5, initial_pos[1], initial_pos[2]]], dtype=np.float32)
+            positions=np.array(
+                [[initial_pos[0] + 0.5, initial_pos[1], initial_pos[2]]],
+                dtype=np.float32,
+            )
         )
         for _ in range(60):
             world.step(render=not args.headless)
